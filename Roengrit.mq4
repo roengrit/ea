@@ -115,6 +115,13 @@ int TakeProfit()
       int tk = OrderSelect(i, SELECT_BY_POS);
       double profit =  OrderProfit();
       double st = OrderStopLoss();
+      
+      string comment = OrderComment();
+      if(comment != "Roengrit : SELL Order" && comment != "Roengrit : BUY Order")
+        {
+         continue;
+        }
+      
       if(profit>0)
         {
          //double d = Bars-0.300;
