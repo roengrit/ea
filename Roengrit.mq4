@@ -121,6 +121,9 @@ int TakeProfit()
         {
          continue;
         }
+      if(profit>0 && profit <.5){
+         continue;
+      }  
       
       if(profit>0)
         {
