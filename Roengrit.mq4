@@ -150,7 +150,7 @@ int StopAll()
      {
       int tk = OrderSelect(i, SELECT_BY_POS);
       double profit =  OrderProfit();
-      if(profit >= -1)
+      if(profit >= -2)
         {
          continue;
         }
