@@ -11,7 +11,7 @@
 
 input double Lot=0.01;
 input double TP=60.0;
-input double SL=100.0;
+input double SL=200.0;
 input int Period1=200;
 input int Period2=20;
 input int Period3=5;
@@ -59,8 +59,9 @@ void OnTick()
    double TakeProfit=NormalizeDouble((TP*factor*Point),Digits);
 
    TakeProfit();
+    StopAll();
 
-   if(fast_ma>slow_ma && (trend==-1 || trend==2))
+   if(Bid>slow_ma && (trend==-1 || trend==2))
      {
       //StopAll();
       trend=1;
@@ -69,12 +70,12 @@ void OnTick()
          flagBeginOrder = true;
          return;
         }
-      StopAll();
+     
       int ticket = OrderSend(Symbol(),OP_BUY,Lot,Ask,5,0,0,"Roengrit : BUY Order",MagicNumber,0,clrGreen);
 
      }
    else
-      if(fast_ma<slow_ma && (trend==-1 || trend==1))
+      if(Bid<slow_ma && (trend==-1 || trend==1))
         {
          //
          trend=2;
@@ -83,7 +84,7 @@ void OnTick()
             flagBeginOrder = true;
             return;
            }
-         StopAll();
+         //StopAll();
          int ticket = OrderSend(Symbol(),OP_SELL,Lot,Bid,5,0,0,"Roengrit : SELL Order",MagicNumber,0,clrOrange);
         }
       else
