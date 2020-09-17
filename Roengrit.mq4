@@ -69,19 +69,21 @@ void OnTick()
          flagBeginOrder = true;
          return;
         }
+      StopAll();
       int ticket = OrderSend(Symbol(),OP_BUY,Lot,Ask,5,0,0,"Roengrit : BUY Order",MagicNumber,0,clrGreen);
 
      }
    else
       if(fast_ma<slow_ma && (trend==-1 || trend==1))
         {
-         //StopAll();
+         //
          trend=2;
          if(!flagBeginOrder)
            {
             flagBeginOrder = true;
             return;
            }
+         StopAll();
          int ticket = OrderSend(Symbol(),OP_SELL,Lot,Bid,5,0,0,"Roengrit : SELL Order",MagicNumber,0,clrOrange);
         }
       else
@@ -119,7 +121,7 @@ int TakeProfit()
          int orType = OrderType();
          if(orType == OP_BUY)
            {
-            if(st < (Ask - StopLoss))
+            if(st < (Ask - StopLoss) || st == 0)
                if(!OrderModify(OrderTicket(),OrderOpenPrice(),Ask - StopLoss,0,0,clrNONE))
                  {
                   Print("Order ", OrderTicket()," openprice : ", OrderOpenPrice()," stop : ", Ask - StopLoss," current : ", Ask, " failed to modify. Error: ", GetLastError());
@@ -127,10 +129,11 @@ int TakeProfit()
            }
          if(orType == OP_SELL)
            {
-            if(st > (Ask + StopLoss))
-               if(!OrderModify(OrderTicket(),OrderOpenPrice(),Ask + StopLoss,0,0,clrNONE))
+            double StopLossLoc = NormalizeDouble(((SL+50)*factor*Point),Digits);
+            if(st > (Ask + StopLossLoc) || st == 0)
+               if(!OrderModify(OrderTicket(),OrderOpenPrice(),Ask + StopLossLoc,0,0,clrNONE))
                  {
-                  Print("Order ", OrderTicket()," openprice : ", OrderOpenPrice()," stop : ", Ask + StopLoss," current : ", Ask, " failed to modify. Error: ", GetLastError());
+                  Print("Order ", OrderTicket()," openprice : ", OrderOpenPrice()," stop : ", Ask + StopLossLoc," current : ", Ask, " failed to modify. Error: ", GetLastError());
                  }
            }
         }
@@ -146,7 +149,11 @@ int StopAll()
    for(int i=total-1; i>=0; i--)
      {
       int tk = OrderSelect(i, SELECT_BY_POS);
-
+      double profit =  OrderProfit();
+      if(profit >= -1)
+        {
+         continue;
+        }
       string comment = OrderComment();
       if(comment != "Roengrit : SELL Order" && comment != "Roengrit : BUY Order")
         {
