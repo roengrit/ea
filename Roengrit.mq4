@@ -45,9 +45,7 @@ void OnDeinit(const int reason)
 //+------------------------------------------------------------------+
 void OnTick()
   {
-   if(bar==Bars)
-      return;
-   bar=Bars;
+    
 
 
 
@@ -58,8 +56,8 @@ void OnTick()
    double StopLoss=NormalizeDouble((SL*factor*Point),Digits);
    double TakeProfit=NormalizeDouble((TP*factor*Point),Digits);
 
-   TakeProfit();
-    StopAll();
+   //TakeProfit();
+   //StopAll();
 
    if(Bid>slow_ma && (trend==-1 || trend==2))
      {
@@ -71,7 +69,7 @@ void OnTick()
          return;
         }
      
-      int ticket = OrderSend(Symbol(),OP_BUY,Lot,Ask,5,0,0,"Roengrit : BUY Order",MagicNumber,0,clrGreen);
+      int ticket = OrderSend(Symbol(),OP_BUY,Lot,Ask,5,0,0,"Secret EA_v[2]-" + (OrdersTotal()-1),MagicNumber,0,clrGreen);
 
      }
    else
@@ -85,7 +83,7 @@ void OnTick()
             return;
            }
          //StopAll();
-         int ticket = OrderSend(Symbol(),OP_SELL,Lot,Bid,5,0,0,"Roengrit : SELL Order",MagicNumber,0,clrOrange);
+         int ticket = OrderSend(Symbol(),OP_SELL,Lot,Bid,5,0,0,"Secret EA_v[2]-" + (OrdersTotal()-1) ,MagicNumber,0,clrOrange);
         }
       else
         {
@@ -117,37 +115,36 @@ int TakeProfit()
       double profit =  OrderProfit();
       double st = OrderStopLoss();
       
-      string comment = OrderComment();
-      if(comment != "Roengrit : SELL Order" && comment != "Roengrit : BUY Order")
-        {
-         continue;
-        }
-      if(profit>0 && profit <.5){
+       
+      if(profit <.2){
          continue;
       }  
       
-      if(profit>0)
-        {
+       
          //double d = Bars-0.300;
          int orType = OrderType();
          if(orType == OP_BUY)
            {
-            if(st < (Ask - StopLoss) || st == 0)
-               if(!OrderModify(OrderTicket(),OrderOpenPrice(),Ask - StopLoss,0,0,clrNONE))
-                 {
-                  Print("Order ", OrderTicket()," openprice : ", OrderOpenPrice()," stop : ", Ask - StopLoss," current : ", Ask, " failed to modify. Error: ", GetLastError());
-                 }
+           Print(Ask);
+           OrderModify(OrderTicket(),OrderOpenPrice(),Bid + StopLoss,0,0,clrNONE);
+           // if((st < (Ask - StopLoss) || st == 0)  )
+           //    if(!OrderModify(OrderTicket(),OrderOpenPrice(),Ask - StopLoss,0,0,clrNONE))
+           //      {
+           //       Print("Order ", OrderTicket()," openprice : ", OrderOpenPrice()," stop : ", Ask - StopLoss," current : ", Ask, " failed to modify. Error: ", GetLastError());
+           //      }
            }
          if(orType == OP_SELL)
            {
-            double StopLossLoc = NormalizeDouble(((SL+50)*factor*Point),Digits);
-            if(st > (Ask + StopLossLoc) || st == 0)
-               if(!OrderModify(OrderTicket(),OrderOpenPrice(),Ask + StopLossLoc,0,0,clrNONE))
-                 {
-                  Print("Order ", OrderTicket()," openprice : ", OrderOpenPrice()," stop : ", Ask + StopLossLoc," current : ", Ask, " failed to modify. Error: ", GetLastError());
-                 }
+           Print(Ask);
+           OrderModify(OrderTicket(),OrderOpenPrice(),Ask - StopLoss,0,0,clrNONE);
+            // double StopLossLoc = NormalizeDouble(((SL+50)*factor*Point),Digits);
+            //if((st > (Ask + StopLossLoc) || st == 0)  )
+            //   if(!OrderModify(OrderTicket(),OrderOpenPrice(),Ask + StopLossLoc,0,0,clrNONE))
+            //     {
+            //      Print("Order ", OrderTicket()," openprice : ", OrderOpenPrice()," stop : ", Ask + StopLossLoc," current : ", Ask, " failed to modify. Error: ", GetLastError());
+            //     }
            }
-        }
+        
      }
    return 0;
   }
