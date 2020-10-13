@@ -1,2 +1,440 @@
-scyHNfnmlSdV12Bq8RuMc5AW0X1cnMxj5hq2kWRm4m7
-https://github.com/bozzlab/MQL4-Pratice/blob/master/Martingale_order.mq4
+//scyHNfnmlSdV12Bq8RuMc5AW0X1cnMxj5hq2kWRm4m7
+//+------------------------------------------------------------------+
+//|                                                      ProjectName |
+//|                                      Copyright 2012, CompanyName |
+//|                                       http://www.companyname.net |
+//+------------------------------------------------------------------+
+#property copyright "Copyright 2017, MetaQuotes Software Corp."
+#property link      "https://www.mql5.com"
+#property version   "1.00"
+#property strict
+
+
+input double LOTS=0.01;
+input double TP=100.0;
+input double SL=300.0;
+input int Period=15;
+//input int Period2=20;
+input int MAGIC_NUMBER=0123456;
+input int SLIPPAGE          = 3;
+input int SHIFT             = 1;
+
+input bool MARTINGALE_ENABLE                = true;
+input double MARTINGALE_MULTIPLIER          = 2;
+input int MARTINGALE_DISTANCE               = 100;
+input int MARTINGALE_MAX_ORDERS             = 4;
+input double MARTINGALE_GOAL_PROFIT         = 10;
+
+double Ema;
+double AskPrice, BidPrice;
+bool NewOrder = false;
+int Ticket;
+
+
+
+bool flagBeginOrder= false;
+int bar=-1;
+double factor=1;
+int trend=-1;
+//+------------------------------------------------------------------+
+//|                                                                  |
+//+------------------------------------------------------------------+
+int OnInit()
+  {
+   flagBeginOrder = false;
+   if(Digits==3 || Digits==5)
+      factor=10.0;
+   else
+      factor=1.0;
+   return(INIT_SUCCEEDED);
+  }
+//+------------------------------------------------------------------+
+//|                                                                  |
+//+------------------------------------------------------------------+
+void OnDeinit(const int reason)
+  {
+   Comment("");
+  }
+//+------------------------------------------------------------------+
+//|                                                                  |
+//+------------------------------------------------------------------+
+void OnTick()
+  {
+
+
+
+//double df = (OrderOpenTime() - TimeCurrent() / 3600);
+//       if(OrderProfit()<=-1  ){
+//   OrderClose(OrderTicket(), OrderLots(), MarketInfo(OrderSymbol(), MODE_ASK), 5, Red);
+//             }
+   double slow_ma=iMA(Symbol(),PERIOD_CURRENT,Period,0,MODE_EMA,PRICE_CLOSE,1);
+
+
+   double StopLoss=NormalizeDouble((SL*factor*Point),Digits);
+   double TakeProfit=NormalizeDouble((TP*factor*Point),Digits);
+
+//TakeProfit();
+//StopAll();
+
+   if(Bid > slow_ma + TakeProfit && (trend==-1 || trend==2))
+     {
+      //StopAll();
+      trend=1;
+
+
+      int ticket = OrderSend(Symbol(),OP_BUY,LOTS,Ask,5,0,0,"KD EA_v[2]-" + (CheckMagic()),MAGIC_NUMBER,0,clrGreen);
+
+     }
+   else
+      if(Bid <slow_ma - TakeProfit && (trend==-1 || trend==1))
+        {
+         //
+         trend=2;
+
+         //StopAll();
+         int ticket = OrderSend(Symbol(),OP_SELL,LOTS,Bid,5,0,0,"KD EA_v[2]-" + (CheckMagic()),MAGIC_NUMBER,0,clrOrange);
+        }
+      else
+        {
+         //Do nothing
+        }
+
+   if(trend==1)
+      Comment("UP TREND");
+   else
+      if(trend==2)
+         Comment("DOWN TREND");
+      else
+         Comment("WAITING FOR TREND");
+
+   if(CheckMagic()==1)
+     {
+      setTrailingStop();
+     }
+
+   Condition();
+   ModifyTP();
+  }
+
+
+//+------------------------------------------------------------------+
+//|                                                                  |
+//+------------------------------------------------------------------+
+int  CheckMagic()
+  {
+   int CountMagic = 0;
+
+   for(int i=0; i<OrdersTotal(); i++)
+     {
+      if(OrderSelect(i,SELECT_BY_POS))
+        {
+         if(OrderMagicNumber() == MAGIC_NUMBER)
+           {
+            CountMagic++;
+           }
+        }
+     }
+   return CountMagic;
+  }
+
+
+//+------------------------------------------------------------------+
+//|                                                                  |
+//+------------------------------------------------------------------+
+
+
+//+------------------------------------------------------------------+
+//|                                                                  |
+//+------------------------------------------------------------------+
+void setTrailingStop()
+  {
+   double buyTrailingStop  = 0.0;
+   double sellTrailingStop = 0.0;
+   double stoplossPip = 0.0;
+   bool   ordm;
+   double   order_ask;
+   double   order_bid;
+   double   order_point;
+   double   order_digit;
+   double   order_stoplevel;
+
+   for(int i=0; i<OrdersTotal(); i++)
+     {
+      if(OrderSelect(i,SELECT_BY_POS))
+        {
+         order_ask = MarketInfo(OrderSymbol(),MODE_ASK);
+         order_bid =  MarketInfo(OrderSymbol(),MODE_BID);
+         order_point = MarketInfo(OrderSymbol(),MODE_POINT);
+         order_digit = MarketInfo(OrderSymbol(),MODE_DIGITS);
+         order_stoplevel = MarketInfo(OrderSymbol(),MODE_STOPLEVEL);
+
+         if(SL < order_stoplevel)
+            stoplossPip =  order_stoplevel;
+         else
+            stoplossPip = SL;
+
+         if(OrderType() == OP_BUY)
+           {
+
+            buyTrailingStop=NormalizeDouble(order_bid-stoplossPip*order_point,order_digit);
+            double stopX = OrderStopLoss();
+            double openX = OrderOpenPrice();
+            if((buyTrailingStop> stopX && stopX !=0) || (buyTrailingStop > openX && stopX  == 0))
+              {
+               ordm=OrderModify(OrderTicket(),OrderOpenPrice(),buyTrailingStop,OrderTakeProfit(),0,CLR_NONE);
+               if(!ordm)
+                  Print("Error in OrderModify. Error code=",GetLastError());
+               else
+                  Print("Order modified successfully.");
+
+               //Print(OrderSymbol(),order_bid,"=ts",buyTrailingStop,">op",OrderOpenPrice());
+              }
+
+            //---
+           }
+         else
+            if(OrderType() == OP_SELL)
+              {
+               //sellTrailingStop=NormalizeDouble(Ask+stopLossPips*Point,Digits);
+               sellTrailingStop=NormalizeDouble(order_ask+stoplossPip*order_point,order_digit);
+
+               if((sellTrailingStop<OrderStopLoss()&& OrderStopLoss() !=0) || (sellTrailingStop < OrderOpenPrice() && OrderStopLoss() == 0))
+                 {
+                  //                  ordm=OrderModify(OrderTicket(),OrderOpenPrice(),sellTrailingStop,OrderTakeProfit(),0,CLR_NONE);
+                  ordm=OrderModify(OrderTicket(),OrderOpenPrice(),sellTrailingStop,OrderTakeProfit(),0,ordm);
+                  if(!ordm)
+                     Print("Error in OrderModify. Error code=",GetLastError());
+                  else
+                     Print("Order modified successfully.");
+                  //Print(OrderSymbol(),order_ask,"=ts",sellTrailingStop,"<op",OrderOpenPrice());
+
+                 }
+
+              }
+
+        }
+     }
+  }
+
+
+//+------------------------------------------------------------------+
+//|                                                                  |
+//+------------------------------------------------------------------+
+
+
+
+
+//+------------------------------------------------------------------+
+//|                                                                  |
+//+------------------------------------------------------------------+
+void Condition()
+  {
+   if(OrdersTotal() != 0)
+     {
+      if(CountSell() == 0 && AskPrice - Ask > MARTINGALE_DISTANCE*Point)
+        {
+         OrderBuy();
+        }
+      else
+         if(CountBuy() == 0 && Bid - BidPrice > MARTINGALE_DISTANCE*Point)
+           {
+            OrderSell();
+           }
+
+
+     }
+  }
+
+
+
+//+------------------------------------------------------------------+
+//|                                                                  |
+//+------------------------------------------------------------------+
+void OrderBuy()
+  {
+   int tp         = 0;
+   double new_lot = LOTS;
+   if(OrdersTotal() == 0)
+     {
+      tp = TP;
+      Ticket = OrderSend(Symbol(), OP_BUY, new_lot, Ask, SLIPPAGE, 0, Ask+tp*Point,"KD EA_v[2]-" + (CheckMagic()), MAGIC_NUMBER, 0, clrGreen);
+     }
+   else
+     {
+      new_lot = NewLots();
+      Ticket = OrderSend(Symbol(), OP_BUY, new_lot, Ask, SLIPPAGE, 0, 0, "KD EA_v[2]-" + (CheckMagic()), MAGIC_NUMBER, 0, clrGreen);
+      ModifyTP();
+     }
+
+   AskPrice = Ask;
+  }
+
+
+
+//+------------------------------------------------------------------+
+//|                                                                  |
+//+------------------------------------------------------------------+
+void OrderSell()
+  {
+   int tp         = 0;
+   double new_lot = LOTS;
+   if(OrdersTotal() == 0)
+     {
+      tp = TP;
+      Ticket = OrderSend(Symbol(), OP_SELL, new_lot, Bid, SLIPPAGE, 0, Bid-tp*Point, "KD EA_v[2]-" + (CheckMagic()), MAGIC_NUMBER, 0, clrRed);
+     }
+   else
+     {
+      new_lot = NewLots();
+      Ticket = OrderSend(Symbol(), OP_SELL, new_lot, Bid, SLIPPAGE, 0, 0, "KD EA_v[2]-" + (CheckMagic()), MAGIC_NUMBER, 0, clrRed);
+      ModifyTP();
+     }
+
+   BidPrice = Bid;
+  }
+
+
+
+
+//+------------------------------------------------------------------+
+//|                                                                  |
+//+------------------------------------------------------------------+
+void ModifyTP()
+ {
+//////////////////////// Prepare Modify ///////////////////////////////////
+
+   double sumOrderBuy,sumOrderSell     = 0;
+   double sumLotsBuy,sumLotsSell       = 0;
+   double avgPriceBuy,avgPriceSell     = 0;
+   double newTPBuy,newTPSell           = 0;
+
+   for(int i = OrdersTotal() - 1; i >= 0; i--)
+     {
+      if(OrderSelect(i, SELECT_BY_POS))
+        {
+         if(OrderType() == OP_BUY)
+           {
+            sumOrderBuy += OrderOpenPrice() * OrderLots();
+            sumLotsBuy  += OrderLots();
+           }
+         if(OrderType() == OP_SELL)
+           {
+            sumOrderSell += OrderClosePrice() * OrderLots();
+            sumLotsSell  += OrderLots();
+           }
+        }
+     }
+
+//////////////////////// Modify TP Buy ///////////////////////////////////
+
+   if(sumLotsBuy != 0)
+     {
+      avgPriceBuy = NormalizeDouble(sumOrderBuy / sumLotsBuy, Digits);
+      newTPBuy = avgPriceBuy + TP * Point;
+
+      for(int i = OrdersTotal() - 1; i >=0; i--)
+        {
+         if(OrderSelect(i, SELECT_BY_POS))
+           {
+            if(OrderType() == OP_BUY)
+              {
+
+               if(newTPBuy != OrderTakeProfit())
+                 {
+                  bool ordm = OrderModify(OrderTicket(),OrderOpenPrice(),OrderStopLoss(),newTPBuy, 0, CLR_NONE);
+                  if(!ordm)
+                     Print("Error in OrderModify. Error code=",GetLastError());
+                  else
+                     Print("Order modified successfully.");
+                 }
+              }
+           }
+        }
+     }
+
+
+//////////////////////// Modify TP Sell ///////////////////////////////////
+
+   if(sumLotsSell != 0)
+     {
+      avgPriceSell = NormalizeDouble(sumOrderSell / sumLotsSell, Digits);
+      newTPSell = avgPriceSell + TP * Point;
+
+      for(int i = OrdersTotal() - 1; i >=0; i--)
+        {
+         if(OrderSelect(i, SELECT_BY_POS))
+           {
+            if(OrderType() == OP_SELL)
+              {
+               if(newTPSell != OrderTakeProfit())
+                 {
+                  bool ordm = OrderModify(OrderTicket(),OrderOpenPrice(),OrderStopLoss(),newTPSell, 0, 0);
+                  if(!ordm)
+                     Print("Error in OrderModify. Error code=",GetLastError());
+                  else
+                     Print("Order modified successfully.");
+                 }
+              }
+           }
+        }
+     }
+  }
+
+
+
+//+------------------------------------------------------------------+
+//|                                                                  |
+//+------------------------------------------------------------------+
+double NewLots()
+  {
+   double new_lots = LOTS;
+   for(int i = OrdersTotal()-1; i >=0; i--)
+     {
+      if(OrderSelect(i,SELECT_BY_POS))
+        {
+         new_lots *= MARTINGALE_MULTIPLIER;
+        }
+     }
+   return new_lots;
+  }
+//+------------------------------------------------------------------+
+//|                                                                  |
+//+------------------------------------------------------------------+
+int CountSell()
+  {
+   int count = 0;
+   for(int i = OrdersTotal() - 1; i >=0; i--)
+     {
+      if(OrderSelect(i, SELECT_BY_TICKET))
+        {
+         if(OrderType() == OP_SELL)
+           {
+            count++;
+           }
+        }
+     }
+   return count;
+  }
+
+
+
+//+------------------------------------------------------------------+
+//|                                                                  |
+//+------------------------------------------------------------------+
+int CountBuy()
+  {
+   int count = 0;
+   for(int i = OrdersTotal() - 1; i >=0; i--)
+     {
+      if(OrderSelect(i, SELECT_BY_TICKET))
+        {
+         if(OrderType() == OP_BUY)
+           {
+            count++;
+           }
+        }
+     }
+   return count;
+  }
+//+------------------------------------------------------------------+
+
