@@ -1,1 +1,2 @@
 scyHNfnmlSdV12Bq8RuMc5AW0X1cnMxj5hq2kWRm4m7
+https://github.com/bozzlab/MQL4-Pratice/blob/master/Martingale_order.mq4
